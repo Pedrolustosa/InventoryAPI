@@ -19,7 +19,7 @@ var app = builder.Build();
 //Endpoints
 #region Category
 
-app.MapGet("/", async(AppDbContext db) => await db.Categories.ToListAsync());
+app.MapGet("/categories", async(AppDbContext db) => await db.Categories.ToListAsync());
 
 app.MapGet("/category/{id:int}", async (int id, AppDbContext db) =>
 {
@@ -50,6 +50,19 @@ app.MapPut("categories/{id:int}", async (int id, Category category, AppDbContext
 
     await db.SaveChangesAsync();
     return Results.Ok(category);
+});
+
+app.MapDelete("/categories/{id:int}", async (int id, AppDbContext db) =>
+{
+    var category = await db.Categories.FindAsync(id);
+
+    if(category is null)
+        return Results.NotFound();
+
+    db.Categories.Remove(category);
+    await db.SaveChangesAsync();
+
+    return Results.NoContent();
 });
 
 #endregion
