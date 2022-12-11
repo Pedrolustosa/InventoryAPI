@@ -1,4 +1,6 @@
-﻿namespace InventoryAPI.Models
+﻿using System.Text.Json.Serialization;
+
+namespace InventoryAPI.Models
 {
     public class Product
     {
@@ -11,6 +13,7 @@
         public int Inventory { get; set; }
 
         public int CategoryId { get; set; }
+        [JsonIgnore]
         public Category? Category { get; set; }
     }
 }
