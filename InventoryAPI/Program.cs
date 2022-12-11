@@ -19,6 +19,13 @@ var app = builder.Build();
 //Endpoints
 #region Category
 
+app.MapGet("/", async(AppDbContext db) => await db.Categories.ToListAsync());
+
+app.MapGet("/category/{id:int}", async (int id, AppDbContext db) =>
+{
+    return await db.Categories.FindAsync(id) is Category category ? Results.Ok(category) : Results.NotFound();
+});
+
 app.MapPost("/categories", async ([FromBody] Category category, [FromServices] AppDbContext db) =>
 {
     db.Categories.Add(category);
@@ -27,8 +34,7 @@ app.MapPost("/categories", async ([FromBody] Category category, [FromServices] A
     return Results.Created($"/categories/{category.CategoryId}", category);
 }).Accepts<Category>("application/json")
   .Produces<Category>(StatusCodes.Status201Created)
-  .WithName("NewCategory")
-  .WithTags("Setter");
+  .WithName("NewCategory");
 
 #endregion
 
