@@ -1,5 +1,7 @@
+using InventoryAPI.Models;
 using InventoryAPI.Context;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +15,23 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseMySql(connecti
                                                  ServerVersion.AutoDetect(connectionString)));
 
 var app = builder.Build();
+
+//Endpoints
+#region Category
+
+app.MapPost("/categories", async ([FromBody] Category category, [FromServices] AppDbContext db) =>
+{
+    db.Categories.Add(category);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/categories/{category.CategoryId}", category);
+}).Accepts<Category>("application/json")
+  .Produces<Category>(StatusCodes.Status201Created)
+  .WithName("NewCategory")
+  .WithTags("Setter");
+
+#endregion
+
 
 // Configure the HTTP request pipeline. - Configure
 if (app.Environment.IsDevelopment())
