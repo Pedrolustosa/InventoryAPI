@@ -8,6 +8,6 @@ namespace InventoryAPI.Context
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         public DbSet<Product>? Products { get; set; }
-        public DbSet<Category>? categories { get; set; }
+        public DbSet<Category>? Categories { get; set; }
     }
 }
