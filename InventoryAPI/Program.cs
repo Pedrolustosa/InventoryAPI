@@ -1,7 +1,12 @@
+using System.Text;
 using InventoryAPI.Models;
 using InventoryAPI.Context;
-using Microsoft.EntityFrameworkCore;
+using InventoryAPI.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,12 +19,61 @@ var connectionString = builder.Configuration.GetConnectionString("DefautConnecti
 builder.Services.AddDbContext<AppDbContext>(options => options.UseMySql(connectionString, 
                                                  ServerVersion.AutoDetect(connectionString)));
 
+builder.Services.AddSingleton<ITokenService>(new TokenService());
+
+builder.Services.AddAuthentication
+                 (JwtBearerDefaults.AuthenticationScheme)
+                 .AddJwtBearer(options =>
+                 {
+                     options.TokenValidationParameters = new TokenValidationParameters
+                     {
+                         ValidateIssuer = true,
+                         ValidateAudience = true,
+                         ValidateLifetime = true,
+                         ValidateIssuerSigningKey = true,
+
+                         ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                         ValidAudience = builder.Configuration["Jwt:Audience"],
+                         IssuerSigningKey = new SymmetricSecurityKey
+                         (Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+                     };
+                 });
+
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 //Endpoints
+
+#region Login
+app.MapPost("/login", [AllowAnonymous] (UserModel userModel, ITokenService tokenService) =>
+{
+    if (userModel == null)
+    {
+        return Results.BadRequest("Login Inválido");
+    }
+    if (userModel.UserName == "pedrolustosa" && userModel.Password == "pedro@123")
+    {
+        var tokenString = tokenService.GenerateToken(app.Configuration["Jwt:Key"],
+            app.Configuration["Jwt:Issuer"],
+            app.Configuration["Jwt:Audience"],
+            userModel);
+        return Results.Ok(new { token = tokenString });
+    }
+    else
+    {
+        return Results.BadRequest("Login Inválido");
+    }
+}).Produces(StatusCodes.Status400BadRequest)
+              .Produces(StatusCodes.Status200OK)
+              .WithName("Login")
+              .WithTags("Authentication");
+
+#endregion
+
 #region Category
 
-app.MapGet("/categories", async(AppDbContext db) => await db.Categories.ToListAsync()).WithTags("Category");
+app.MapGet("/categories", async(AppDbContext db) => await db.Categories.ToListAsync()).RequireAuthorization().WithTags("Category");
 
 app.MapGet("/category/{id:int}", async (int id, AppDbContext db) =>
 {
@@ -71,7 +125,7 @@ app.MapDelete("/categories/{id:int}", async (int id, AppDbContext db) =>
 
 #region Product
 
-app.MapGet("/products", async (AppDbContext db) => await db.Products.ToListAsync()).WithTags("Product"); ;
+app.MapGet("/products", async (AppDbContext db) => await db.Products.ToListAsync()).RequireAuthorization().WithTags("Product"); ;
 
 app.MapGet("/products/{id:int}", async (int id, AppDbContext db) =>
 {
@@ -133,5 +187,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 app.Run();
